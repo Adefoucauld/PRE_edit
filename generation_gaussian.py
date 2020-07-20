@@ -18,6 +18,7 @@ def f(x):
     return x * np.sin(x)
 
 # ----------------------------------------------------------------------
+# Cette partie provient du site Gaussian processor et m'a aidé à générer mes données gaussiennes
 #  First the noiseless case
 X = np.atleast_2d([1., 3., 5., 6., 7., 8.]).T
 
