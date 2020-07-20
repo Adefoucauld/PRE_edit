@@ -167,16 +167,16 @@ lr=0.01, weight_decay= 1e-3, momentum = 0.9)
 
 
 def train(net, train_loader, optimizer, epoch):
-    #net.train()
-    total_loss=0
+    #net.train()  #j'ai mis en commentaire car on me demandais un argument pour train() alors que pour mois cette commande va juste spécifier que l'on est en phase de train
+    total_loss=0          # j'ai essayé par exemple de rentrer un booléen mais la commande n'est pas valide
     for batch_idx, (train_loader.data_feature, train_loader.data_target) in enumerate(train_loader, 0):
-        #data, target = data.to(device), target.to(device)
-        #(complete the code (GF) )
-        outputs = net(train_loader.data_feature)
-        loss = criterion(outputs,train_loader.data_target)
+        #data, target = data.to(device), target.to(device)                #jusque la je n'avais pas travailler en changeant de calculateur et je ne me sentais pas assez à l'aise
+        #(complete the code (GF) )                                        # pour manip ces commandes
+        outputs = net(train_loader.data_feature)  # cette ligne bloque et indique que je donne deux arguments au __init__ de ma class Net ( qui n'en prend 1) 
+        loss = criterion(outputs,train_loader.data_target)                 #mais je ne vois pas comment entraîner mon réseau sans cette commande
         total_loss +=loss.cpu().item()
         optimizer.step()
-    #lr_scheduler.step()
+    #lr_scheduler.step() ## je l'ai mis en commentaire car je ne comprenais pas d'ou venait cette function
     print('Epoch:', epoch , 'average loss ', total_loss/ len(train_loader))
 
 
@@ -184,19 +184,18 @@ val_loading = MyDataset(X_val, y_val) # on charge données de validation
 
 test_loading = MyDataset(X_test, y_test) #on charge données de test
 
-def test(net,test_loader):
+def test(net,test_loader,epoch):
     total_loss = 0
     for batch_idx,(test_loader.data_feature, test_loader.data_target) in enumerate(test_loader,0):
         outputs = net(test_loader.data_feature)
         loss = criterion(outputs,test_loader.data_target)
         total_loss += loss.cpu().item()
-    print('average loss', total_loss/len(test_loader))
-    
+    print('Epoch',epoch , 'average loss', total_loss/len(test_loader))  
         
 #on a définit nos fonctions de train et de test, 
 # on va maintenant les utiliser
     
-for epoch in range(10):
+for epoch in range(50):
     train(model,train_loading,optimizer,epoch)
-    test(Net,test_loading)    
+    test(Net,test_loading,epoch)    
     
