@@ -4,9 +4,12 @@ Created on Mon Jul 20 14:53:24 2020
 
 @author: Utilisateur
 """
-
-
+# PLEASE PUT ALL IMPORT HERE (GF)
 import numpy as np
+import torch
+from torch.utils import data
+import torch.nn as nn
+import torch.nn.functional as F
 
 from matplotlib import pyplot as plt
 
@@ -74,8 +77,6 @@ std_y_train =np.std(y_train)
 
 # Ecriture du data loader (repris du tp_deep)
 
-import torch
-from torch.utils import data
 
 class MyDataset(data.Dataset):
 
@@ -109,8 +110,7 @@ X  = MyDataset(X_train, y_train) # on a chargé nos données
 
 # Ecriture du réseau de neurones (reprise du tp_deep)
 
-import torch.nn as nn
-import torch.nn.functional as F
+
 
 class Net(nn.Module):
   def __init__(self):
@@ -130,11 +130,22 @@ criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(model.parameters(),
 lr=0.01, weight_decay= 1e-3, momentum = 0.9)
 
+# AFTER THAT LINE EVERYTHING IS WRONG (write a training function) (GF)
+'''def train(net, train_loader, optimizer, epoch):
+    net.train()
+    total_loss=0
+    for batch_idx, (data, target) in enumerate(train_loader, 0):
+        data, target = data.to(device), target.to(device)
+        #(complete the code (GF) )
+        total_loss +=loss.cpu().item()
+        optimizer.step()
+    lr_scheduler.step()
+    print('Epoch:', epoch , 'average loss ', total_loss/ len(train_loader))
 # zeroes the gradient buffers of all parameters
-optimizer.zero_grad()
-outputs = model(X)
-loss = criterion(outputs, y_train)
-loss.backward()
+optimizer.zero_grad() # wrong (GF)
+outputs = model(X)  # wrong (GF)
+loss = criterion(outputs, y_train)  # wrong (GF)
+loss.backward()  # wrong (GF)
 # Perform the training parameters update
-optimizer.step()   
+optimizer.step()    # wrong (GF)'''
 
