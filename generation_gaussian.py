@@ -115,8 +115,8 @@ import torch.nn.functional as F
 class Net(nn.Module):
   def __init__(self):
     super(Net, self).__init__()
-    self.FC1 = nn.Linear(784, 128)
-    self.FC2 = nn.Linear(128, 10)
+    self.FC1 = nn.Linear(6, 3)
+    self.FC2 = nn.Linear(3, 1)
   def forward(self, x):
     x = F.sigmoid(self.FC1(x))
     x = self.FC2(x)
