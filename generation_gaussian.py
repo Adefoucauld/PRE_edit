@@ -4,13 +4,11 @@ Created on Mon Jul 20 14:53:24 2020
 
 @author: Utilisateur
 """
-# PLEASE PUT ALL IMPORT HERE (GF)
-import numpy as np
 import torch
 from torch.utils import data
 import torch.nn as nn
 import torch.nn.functional as F
-
+import numpy as np
 from matplotlib import pyplot as plt
 
 np.random.seed(1)
@@ -22,19 +20,31 @@ def f(x):
 
 # ----------------------------------------------------------------------
 # #  First the noiseless case
-X = np.atleast_2d([1., 3., 5., 6., 7., 8.]).T
+# X = np.atleast_2d([1., 3., 5., 6., 7., 8.]).T
 
-# # Observations
-y = f(X).ravel()
+# # # Observations
+# y = f(X).ravel()
 
-# # Mesh the input space for evaluations of the real function, the prediction and
-# # its MSE
+# # # Mesh the input space for evaluations of the real function, the prediction and
+# # # its MSE
 x = np.atleast_2d(np.linspace(0, 10, 1000)).T
 
 # #plt.figure()
 # #plt.plot(x, f(x), 'b:', label=r'$f(x) = x\,\sin(x)$')
 # #plt.plot(X, y, 'r.', markersize=10, label='Observations')
 
+#-----------------------------------------------------------------------#
+# Noisy case
+X = np.linspace(0.1, 9.9, 20)
+X = np.atleast_2d(X).T
+#mesh the input spacefor evaluation of the real function
+x = np.atleast_2d(np.linspace(0, 10, 1000)).T
+
+# Observations and noise
+y = f(X).ravel()
+dy = 0.5 + 1.0 * np.random.random(y.shape)
+noise = np.random.normal(0, dy)
+y += noise
 
 #test génération de data
 # on va créer un X matrix avec un ensemble de 6 points par ligne, créés aléatoirement
@@ -44,12 +54,12 @@ x = np.atleast_2d(np.linspace(0, 10, 1000)).T
 #on choisit de prendre 10 sets de data
 
 m =10 #no of data set
-n = 6 #no of points of interest
+n = 6 #no of points of interest to approx the gaussian line
 
 X_bis = np.zeros((m,n),dtype = float)
 
 for i in range(m):
-    X_bis[i,:]= np.random.random(6)*10
+    X_bis[i,:]= np.random.random(n)*10
     
 #on crée nos différents sets de data ( que l'on 
 # aurait pu sélectionner de manièrer aléatoire )
@@ -58,14 +68,33 @@ X_train = X_bis[:6,:]
 X_val = X_bis[6:8,:]
 X_test = X_bis[8:,:]
 
-y_train = np.reshape(f(X_train).ravel(),[6,n])
-y_val = np.reshape(f(X_val).ravel(),[2,n])
+y_train = f(X_train) #on va bruiter les données pour chaque set de données
+dy_train = 0.5 + 1.0 * np.random.random(y_train.shape)
+noise_train = np.random.normal(0, dy_train)
+y_train += noise_train
 
+y_val = f(X_val)
+dy_val = 0.5 + 1.0 * np.random.random(y_val.shape)
+noise_val = np.random.normal(0, dy_val)
+y_val += noise_val
+
+y_test = f(X_test)
+
+## Without noise
+# plt.figure()
+# plt.plot(x, f(x), 'b:', label=r'$f(x) = x\,\sin(x)$')
+# # plt.plot(X, y, 'r.', markersize=10, label='Observations')
+# for i in range(6):
+#     plt.plot(X_train[i,:],y_train[i,:],linestyle = 'none',marker ='o')
+
+
+## Noisy case
 plt.figure()
-plt.plot(x, f(x), 'b:', label=r'$f(x) = x\,\sin(x)$')
-plt.plot(X, y, 'r.', markersize=10, label='Observations')
-for i in range(6):
+plt.plot(x, f(x), 'r:', label=r'$f(x) = x\,\sin(x)$')
+plt.errorbar(X.ravel(), y, dy, fmt='r.', markersize=10, label='Observations')
+for i in range(3):
     plt.plot(X_train[i,:],y_train[i,:],linestyle = 'none',marker ='o')
+    plt.errorbar(X_train[i,:].ravel(), y_train[i,:], dy_train[i,:],fmt='none')
 
 # calcul de mean_X_train et std_X_train, idem pour y
     
@@ -76,6 +105,8 @@ mean_y_train = np.mean(y_train)
 std_y_train =np.std(y_train)
 
 # Ecriture du data loader (repris du tp_deep)
+
+
 
 
 class MyDataset(data.Dataset):
@@ -106,7 +137,9 @@ class MyDataset(data.Dataset):
         y_train_normalized = (self.data_target - mean_y_train) / std_y_train
         return np.array(y_train_normalized, ndmin = 2).T
 
-X  = MyDataset(X_train, y_train) # on a chargé nos données
+train_loading  = MyDataset(X_train,y_train) # on a chargé nos données
+
+
 
 # Ecriture du réseau de neurones (reprise du tp_deep)
 
@@ -115,10 +148,11 @@ X  = MyDataset(X_train, y_train) # on a chargé nos données
 class Net(nn.Module):
   def __init__(self):
     super(Net, self).__init__()
-    self.FC1 = nn.Linear(6, 3)
-    self.FC2 = nn.Linear(3, 1)
+    self.FC1 = nn.Linear(6,3)
+    self.FC2 = nn.Linear(3, 6)
   def forward(self, x):
-    x = F.sigmoid(self.FC1(x))
+    #x = F.sigmoid(self.FC1(x)) # j'ai du le remplacer car F.sigmoid était indiqué " deprecated"
+    x = torch.sigmoid(self.FC1(x))
     x = self.FC2(x)
     return x
 
@@ -130,22 +164,39 @@ criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(model.parameters(),
 lr=0.01, weight_decay= 1e-3, momentum = 0.9)
 
-# AFTER THAT LINE EVERYTHING IS WRONG (write a training function) (GF)
-'''def train(net, train_loader, optimizer, epoch):
-    net.train()
+
+
+def train(net, train_loader, optimizer, epoch):
+    #net.train()
     total_loss=0
-    for batch_idx, (data, target) in enumerate(train_loader, 0):
-        data, target = data.to(device), target.to(device)
+    for batch_idx, (train_loader.data_feature, train_loader.data_target) in enumerate(train_loader, 0):
+        #data, target = data.to(device), target.to(device)
         #(complete the code (GF) )
+        outputs = net(train_loader.data_feature)
+        loss = criterion(outputs,train_loader.data_target)
         total_loss +=loss.cpu().item()
         optimizer.step()
-    lr_scheduler.step()
+    #lr_scheduler.step()
     print('Epoch:', epoch , 'average loss ', total_loss/ len(train_loader))
-# zeroes the gradient buffers of all parameters
-optimizer.zero_grad() # wrong (GF)
-outputs = model(X)  # wrong (GF)
-loss = criterion(outputs, y_train)  # wrong (GF)
-loss.backward()  # wrong (GF)
-# Perform the training parameters update
-optimizer.step()    # wrong (GF)'''
 
+
+val_loading = MyDataset(X_val, y_val) # on charge données de validation
+
+test_loading = MyDataset(X_test, y_test) #on charge données de test
+
+def test(net,test_loader):
+    total_loss = 0
+    for batch_idx,(test_loader.data_feature, test_loader.data_target) in enumerate(test_loader,0):
+        outputs = net(test_loader.data_feature)
+        loss = criterion(outputs,test_loader.data_target)
+        total_loss += loss.cpu().item()
+    print('average loss', total_loss/len(test_loader))
+    
+        
+#on a définit nos fonctions de train et de test, 
+# on va maintenant les utiliser
+    
+for epoch in range(10):
+    train(model,train_loading,optimizer,epoch)
+    test(Net,test_loading)    
+    
