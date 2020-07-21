@@ -150,8 +150,8 @@ train_loading = torch.utils.data.DataLoader(training_set, batch_size= 20)
 class Net(nn.Module):
   def __init__(self):
     super(Net, self).__init__()
-    self.FC1 = nn.Linear(6,3)
-    self.FC2 = nn.Linear(3, 6)
+    self.FC1 = nn.Linear(6,3)       # je ne suis pas sur des coefficients en arguments de Linear( pour moi : 6 valeurs en entrées par training set,taille de hidden layer = 
+    self.FC2 = nn.Linear(3, 6)      # et 6 sorties
   def forward(self, x):
     #x = F.sigmoid(self.FC1(x)) # j'ai du le remplacer car F.sigmoid était indiqué " deprecated"
     x = torch.sigmoid(self.FC1(x))
@@ -174,10 +174,9 @@ def train(net, train_loader, optimizer, epoch):
     for batch_idx, (data, target) in enumerate(train_loader, 0):
         #data, target = data.to(device), target.to(device)
         #(complete the code (GF) )
-        data,target=torch.FloatTensor(data.float()).view(-1,1),torch.FloatTensor(target.float())
-        optimizer.zero_grad()
+        data,target=torch.FloatTensor(data.float()).view(-1,1),torch.FloatTensor(target.float())   # cette ligne était vient de forum d'aide et doit normalement 
+        optimizer.zero_grad()                                                                      # convertir mes arrays en tensor
         outputs = net(data)
-        print('outputs',outputs)
         loss = criterion(outputs,target)
         loss.backward()
         total_loss +=loss.cpu().item()
@@ -193,9 +192,10 @@ test_loading = MyDataset(X_test, y_test) #on charge données de test
 def test(net,test_loader):
     total_loss = 0
     for batch_idx,(test_loader.data_feature, test_loader.data_target) in enumerate(test_loader,0):
-        outputs = net(test_loader.data_feature)
-        loss = criterion(outputs,test_loader.data_target)
-        total_loss += loss.cpu().item()
+        data,target=torch.FloatTensor(data.float()).view(-1,1),torch.FloatTensor(target.float())                                                                       
+        outputs = net(data)
+        loss = criterion(outputs,target)
+        total_loss +=loss.cpu().item()
     print('average loss', total_loss/len(test_loader))
     
         
