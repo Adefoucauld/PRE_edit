@@ -19,15 +19,15 @@ def f(x):
     return x * np.sin(x)
 
 # ----------------------------------------------------------------------
-# #  First the noiseless case
+# # #  First the noiseless case
 # X = np.atleast_2d([1., 3., 5., 6., 7., 8.]).T
 
-# # # Observations
+# # # # Observations
 # y = f(X).ravel()
 
-# # # Mesh the input space for evaluations of the real function, the prediction and
-# # # its MSE
-x = np.atleast_2d(np.linspace(0, 10, 1000)).T
+# # # # Mesh the input space for evaluations of the real function, the prediction and
+# # # # its MSE
+# x = np.atleast_2d(np.linspace(0, 10, 1000)).T
 
 # #plt.figure()
 # #plt.plot(x, f(x), 'b:', label=r'$f(x) = x\,\sin(x)$')
@@ -53,7 +53,7 @@ y += noise
 
 #on choisit de prendre 10 sets de data
 
-m =10 #no of data set
+m =20 #no of data set
 n = 6 #no of points of interest to approx the gaussian line
 
 X_bis = np.zeros((m,n),dtype = float)
@@ -64,9 +64,9 @@ for i in range(m):
 #on crée nos différents sets de data ( que l'on 
 # aurait pu sélectionner de manièrer aléatoire )
 
-X_train = X_bis[:6,:]
-X_val = X_bis[6:8,:]
-X_test = X_bis[8:,:]
+X_train = X_bis[:12,:]
+X_val = X_bis[12:16,:]
+X_test = X_bis[16:,:]
 
 y_train = f(X_train) #on va bruiter les données pour chaque set de données
 dy_train = 0.5 + 1.0 * np.random.random(y_train.shape)
@@ -80,21 +80,21 @@ y_val += noise_val
 
 y_test = f(X_test)
 
-## Without noise
+# Without noise
 # plt.figure()
 # plt.plot(x, f(x), 'b:', label=r'$f(x) = x\,\sin(x)$')
-# # plt.plot(X, y, 'r.', markersize=10, label='Observations')
+# plt.plot(X, y, 'r.', markersize=10, label='Observations')
 # for i in range(6):
 #     plt.plot(X_train[i,:],y_train[i,:],linestyle = 'none',marker ='o')
 
 
-## Noisy case
+# ## Noisy case
 plt.figure()
 plt.plot(x, f(x), 'r:', label=r'$f(x) = x\,\sin(x)$')
 plt.errorbar(X.ravel(), y, dy, fmt='r.', markersize=10, label='Observations')
 for i in range(3):
-    plt.plot(X_train[i,:],y_train[i,:],linestyle = 'none',marker ='o')
-    plt.errorbar(X_train[i,:].ravel(), y_train[i,:], dy_train[i,:],fmt='none')
+    plt.plot(X_train[i,:],y_train[i,:],linestyle = 'none',marker ='o',color= (i/4,i/5,0.8-i/4))
+    plt.errorbar(X_train[i,:].ravel(), y_train[i,:], dy_train[i,:],fmt='none',color=(i/4,i/5,0.8-i/4))
 
 # calcul de mean_X_train et std_X_train, idem pour y
     
@@ -137,7 +137,9 @@ class MyDataset(data.Dataset):
         y_train_normalized = (self.data_target - mean_y_train) / std_y_train
         return np.array(y_train_normalized, ndmin = 2).T
 
-train_loading  = MyDataset(X_train,y_train) # on a chargé nos données
+training_set  = MyDataset(X_train,y_train) # on a chargé nos données
+
+train_loading = torch.utils.data.DataLoader(training_set, batch_size= 20)
 
 
 
@@ -167,16 +169,20 @@ lr=0.01, weight_decay= 1e-3, momentum = 0.9)
 
 
 def train(net, train_loader, optimizer, epoch):
-    #net.train()  #j'ai mis en commentaire car on me demandais un argument pour train() alors que pour mois cette commande va juste spécifier que l'on est en phase de train
-    total_loss=0          # j'ai essayé par exemple de rentrer un booléen mais la commande n'est pas valide
-    for batch_idx, (train_loader.data_feature, train_loader.data_target) in enumerate(train_loader, 0):
-        #data, target = data.to(device), target.to(device)                #jusque la je n'avais pas travailler en changeant de calculateur et je ne me sentais pas assez à l'aise
-        #(complete the code (GF) )                                        # pour manip ces commandes
-        outputs = net(train_loader.data_feature)  # cette ligne bloque et indique que je donne deux arguments au __init__ de ma class Net ( qui n'en prend 1) 
-        loss = criterion(outputs,train_loader.data_target)                 #mais je ne vois pas comment entraîner mon réseau sans cette commande
+    net.train()
+    total_loss=0
+    for batch_idx, (data, target) in enumerate(train_loader, 0):
+        #data, target = data.to(device), target.to(device)
+        #(complete the code (GF) )
+        data,target=torch.FloatTensor(data.float()).view(-1,1),torch.FloatTensor(target.float())
+        optimizer.zero_grad()
+        outputs = net(data)
+        print('outputs',outputs)
+        loss = criterion(outputs,target)
+        loss.backward()
         total_loss +=loss.cpu().item()
         optimizer.step()
-    #lr_scheduler.step() ## je l'ai mis en commentaire car je ne comprenais pas d'ou venait cette function
+    torch.optim.lr_scheduler.step()
     print('Epoch:', epoch , 'average loss ', total_loss/ len(train_loader))
 
 
@@ -184,18 +190,19 @@ val_loading = MyDataset(X_val, y_val) # on charge données de validation
 
 test_loading = MyDataset(X_test, y_test) #on charge données de test
 
-def test(net,test_loader,epoch):
+def test(net,test_loader):
     total_loss = 0
     for batch_idx,(test_loader.data_feature, test_loader.data_target) in enumerate(test_loader,0):
         outputs = net(test_loader.data_feature)
         loss = criterion(outputs,test_loader.data_target)
         total_loss += loss.cpu().item()
-    print('Epoch',epoch , 'average loss', total_loss/len(test_loader))  
+    print('average loss', total_loss/len(test_loader))
+    
         
 #on a définit nos fonctions de train et de test, 
 # on va maintenant les utiliser
     
 for epoch in range(50):
     train(model,train_loading,optimizer,epoch)
-    test(Net,test_loading,epoch)    
+    test(Net,test_loading)    
     
