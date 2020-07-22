@@ -89,12 +89,12 @@ y_test = f(X_test)
 
 
 # ## Noisy case
-plt.figure()
-plt.plot(x, f(x), 'r:', label=r'$f(x) = x\,\sin(x)$')
-plt.errorbar(X.ravel(), y, dy, fmt='r.', markersize=10, label='Observations')
-for i in range(3):
-    plt.plot(X_train[i,:],y_train[i,:],linestyle = 'none',marker ='o',color= (i/4,i/5,0.8-i/4))
-    plt.errorbar(X_train[i,:].ravel(), y_train[i,:], dy_train[i,:],fmt='none',color=(i/4,i/5,0.8-i/4))
+# plt.figure()
+# plt.plot(x, f(x), 'r:', label=r'$f(x) = x\,\sin(x)$')
+# plt.errorbar(X.ravel(), y, dy, fmt='r.', markersize=10, label='Observations')
+# for i in range(3):
+#     plt.plot(X_train[i,:],y_train[i,:],linestyle = 'none',marker ='o',color= (i/4,i/5,0.8-i/4))
+#     plt.errorbar(X_train[i,:].ravel(), y_train[i,:], dy_train[i,:],fmt='none',color=(i/4,i/5,0.8-i/4))
 
 # calcul de mean_X_train et std_X_train, idem pour y
     
@@ -135,8 +135,8 @@ class MyDataset(data.Dataset):
     
     def transforms_target(self ):
         y_train_normalized = (self.data_target - mean_y_train) / std_y_train
-        return np.array(y_train_normalized, ndmin = 2).T
-
+        return np.array(y_train_normalized, ndmin = 2)#.T
+        
 training_set  = MyDataset(X_train,y_train) # on a chargé nos données
 
 train_loading = torch.utils.data.DataLoader(training_set, batch_size= 20)
@@ -150,11 +150,13 @@ train_loading = torch.utils.data.DataLoader(training_set, batch_size= 20)
 class Net(nn.Module):
   def __init__(self):
     super(Net, self).__init__()
-    self.FC1 = nn.Linear(6,3)       # je ne suis pas sur des coefficients en arguments de Linear( pour moi : 6 valeurs en entrées par training set,taille de hidden layer = 
-    self.FC2 = nn.Linear(3, 6)      # et 6 sorties
+    self.FC1 = nn.Linear(6,10)
+    self.FC2 = nn.Linear(10,6)
   def forward(self, x):
-    #x = F.sigmoid(self.FC1(x)) # j'ai du le remplacer car F.sigmoid était indiqué " deprecated"
-    x = torch.sigmoid(self.FC1(x))
+    #print(x.shape)
+    x.view(x.size(0),-1)
+    x = F.sigmoid(self.FC1(x)) # j'ai du le remplacer car F.sigmoid était indiqué " deprecated"
+    #x = torch.sigmoid(self.FC1(x))
     x = self.FC2(x)
     return x
 
@@ -171,19 +173,18 @@ lr=0.01, weight_decay= 1e-3, momentum = 0.9)
 def train(net, train_loader, optimizer, epoch):
     net.train()
     total_loss=0
-    for batch_idx, (data, target) in enumerate(train_loader, 0):
+    for batch_idx, (data,target) in enumerate(train_loader, 0):
         #data, target = data.to(device), target.to(device)
         #(complete the code (GF) )
-        data,target=torch.FloatTensor(data.float()).view(-1,1),torch.FloatTensor(target.float())   # cette ligne était vient de forum d'aide et doit normalement 
-        optimizer.zero_grad()                                                                      # convertir mes arrays en tensor
         outputs = net(data)
-        loss = criterion(outputs,target)
+        print(outputs.shape)
+        print(target.shape)
+        loss = criterion(outputs,)
         loss.backward()
         total_loss +=loss.cpu().item()
         optimizer.step()
     torch.optim.lr_scheduler.step()
     print('Epoch:', epoch , 'average loss ', total_loss/ len(train_loader))
-
 
 val_loading = MyDataset(X_val, y_val) # on charge données de validation
 
@@ -192,10 +193,9 @@ test_loading = MyDataset(X_test, y_test) #on charge données de test
 def test(net,test_loader):
     total_loss = 0
     for batch_idx,(test_loader.data_feature, test_loader.data_target) in enumerate(test_loader,0):
-        data,target=torch.FloatTensor(data.float()).view(-1,1),torch.FloatTensor(target.float())                                                                       
-        outputs = net(data)
-        loss = criterion(outputs,target)
-        total_loss +=loss.cpu().item()
+        outputs = net(test_loader.data_feature)
+        loss = criterion(outputs,test_loader.data_target)
+        total_loss += loss.cpu().item()
     print('average loss', total_loss/len(test_loader))
     
         
@@ -204,5 +204,5 @@ def test(net,test_loader):
     
 for epoch in range(50):
     train(model,train_loading,optimizer,epoch)
-    test(Net,test_loading)    
+    #test(Net,test_loading)    
     
