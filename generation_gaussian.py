@@ -155,8 +155,7 @@ class Net(nn.Module):
   def forward(self, x):
     #print(x.shape)
     x.view(x.size(0),-1)
-    x = F.sigmoid(self.FC1(x)) # j'ai du le remplacer car F.sigmoid était indiqué " deprecated"
-    #x = torch.sigmoid(self.FC1(x))
+    x = F.sigmoid(self.FC1(x)) 
     x = self.FC2(x)
     return x
 
