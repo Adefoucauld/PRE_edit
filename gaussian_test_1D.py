@@ -18,6 +18,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from matplotlib import pyplot as plt
+from math import sqrt 
 
 np.random.seed(1)
 
@@ -61,7 +62,7 @@ x = np.atleast_2d(np.linspace(0, 10, 1000)).T
 
 #on choisit de prendre 10 sets de data
 
-m =100 #no of data set
+m =2000 #no of data set
 #n = 100 #no of points of interest to approx the gaussian line
 
 X_bis = np.zeros((1,m),dtype = float)
@@ -71,9 +72,9 @@ X_bis=np.random.random(m)*10
 #on crée nos différents sets de data ( que l'on 
 # aurait pu sélectionner de manièrer aléatoire )
 
-X_train = X_bis[0:60]
-X_val = X_bis[60:80]
-X_test = X_bis[80:]
+X_train = X_bis[0:1200]
+X_val = X_bis[1200:1600]
+X_test = X_bis[1600:]
 
 y_train = f(X_train) #on va bruiter les données pour chaque set de données
 # dy_train = 0.5 + 1.0 * np.random.random(y_train.shape)
@@ -88,10 +89,10 @@ y_val = f(X_val)
 y_test = f(X_test)
 
 # Without noise
-plt.figure()
-plt.plot(x, f(x), 'b:', label=r'$f(x) = x\,\sin(x)$')
-plt.plot(X, y, 'r.', markersize=10, label='Observations')
-plt.plot(X_train,y_train,'g',marker='o',linestyle='none')
+# plt.figure()
+# plt.plot(x, f(x), 'b:', label=r'$f(x) = x\,\sin(x)$')
+# plt.plot(X, y, 'r.', markersize=10, label='Observations')
+# plt.plot(X_train,y_train,'g',marker='o',linestyle='none')
 
 # ## Noisy case
 # plt.figure()
@@ -121,8 +122,8 @@ class MyDataset(data.Dataset):
         #Initialization
         self.data_feature = data_feature
         self.data_target = data_target
-        self.transformed_feature = self.transforms_feature()
-        self.transformed_target = self.transforms_target()
+        # self.transformed_feature = self.transforms_feature()
+        # self.transformed_target = self.transforms_target()
         
     def __len__(self):
     #Denotes the total number of samples
@@ -131,35 +132,41 @@ class MyDataset(data.Dataset):
     def __getitem__(self, index):
     #Generates one sample of data
     # Select sample
-        data_feature = torch.from_numpy(self.transformed_feature[index]).float()
-        data_target = torch.from_numpy(self.transformed_target[index]).float()
-        return data_feature, data_target
+        # data_feature = torch.from_numpy(self.transformed_feature[index]).float()
+        # data_target = torch.from_numpy(self.transformed_target[index]).float()
+        # return data_feature, data_target
+        X_train_normalized = (self.data_feature[index] - mean_X_train) / std_X_train
+        y_train_normalized = (self.data_target[index] - mean_y_train) / std_y_train
+        return torch.from_numpy(np.array(X_train_normalized,ndmin=1)).float(), torch.from_numpy(np.array(y_train_normalized, ndmin = 1)).float()
+                    
+    # def transforms_feature(self ):
+    #      X_train_transformed =(self.data_feature - np.full(self.data_feature.shape,mean_X_train)) / np.full(self.data_feature.shape, std_X_train)
+    #      return torch.from_numpy(np.array(X_train_transformed,ndmin=1)).float()
+     
+    # def transforms_target(self ):
+    #     y_train_transformed = (self.data_target - mean_y_train) / std_y_train
+    #     return torch.from_numpy(np.array(y_train_transformed,ndmin=1)).float()
 
-    def transforms_feature(self ):
-        return (self.data_feature - np.full(self.data_feature.shape,mean_X_train)) / np.full(self.data_feature.shape, std_X_train)
+training_set  = MyDataset(X_train,y_train) # on charge nos données
+train_loading = torch.utils.data.DataLoader(training_set, batch_size= 500)
     
-    def transforms_target(self ):
-        y_train_normalized = (self.data_target - mean_y_train) / std_y_train
-        return np.array(y_train_normalized, ndmin = 2).T
-
-training_set  = MyDataset(X_train,y_train) # on a chargé nos données
-
-train_loading = torch.utils.data.DataLoader(training_set, batch_size= 100)
-
+val_set = MyDataset(X_val, y_val)  
+val_loading = torch.utils.data.DataLoader(val_set, batch_size= 100)
+    
+test_set  = MyDataset(X_test,y_test) 
+test_loading = torch.utils.data.DataLoader(test_set, batch_size= 100)
 
 
 # Ecriture du réseau de neurones (reprise du tp_deep)
 
 
-
 class Net(nn.Module):
   def __init__(self):
     super(Net, self).__init__()
-    self.FC1 = nn.Linear(6,3)
-    self.FC2 = nn.Linear(3, 6)
+    self.FC1 = nn.Linear(1,10)
+    self.FC2 = nn.Linear(10, 1)
   def forward(self, x):
-    #x = F.sigmoid(self.FC1(x)) # j'ai du le remplacer car F.sigmoid était indiqué " deprecated"
-    x = torch.sigmoid(self.FC1(x))
+    x = F.relu(self.FC1(x)) 
     x = self.FC2(x)
     return x
 
@@ -167,64 +174,47 @@ model = Net()
 
 #entrainement et validation
 
-criterion = nn.CrossEntropyLoss()
+criterion = nn.MSELoss()
 optimizer = torch.optim.SGD(model.parameters(),
-lr=0.01, weight_decay= 1e-3, momentum = 0.9)
+lr=0.00001, weight_decay= 0.001, momentum = 0.9)
 
+loss_list = []
 
+def train(net, train_loader, optimizer, epoch):
+    net.train()
+    total_loss=0
+    for idx,(data, target) in enumerate(train_loader, 0):
+        #data, target = data.to(device), target.to(device)
+        outputs = net(data)
+        loss = criterion(outputs,target)
+        loss.backward()
+        #print(loss.cpu().item())
+        total_loss +=loss.cpu().item()
+        optimizer.step()
+    loss_list.append(total_loss/len(train_loader))
+    #torch.optim.lr_scheduler.step()
+    print('Epoch:', epoch , 'average training loss ', total_loss/ len(train_loader))
 
-# def train(net, train_loader, optimizer, epoch):
-#     net.train()
-#     total_loss=0
-#     #for (data, target) in enumerate(train_loader, 0):
-#         #data, target = data.to(device), target.to(device)
-#         #(complete the code (GF) )
-#     outputs = net(data)
-#     loss = criterion(outputs,train_loader.data_target)
-#     total_loss +=loss.cpu().item()
-#     optimizer.step()
-#     torch.optim.lr_scheduler.step()
-#     print('Epoch:', epoch , 'average loss ', total_loss/ len(train_loader))
-
-def train(net,optimizer,trainloader):
-    net.train(True)
-    running_loss=0.0
-    for epoch in range(10):
-
-        for i,data in enumerate(trainloader):
-            inputs,targets=data
-            inputs,targets=torch.FloatTensor(inputs.float()).view(-1,1),torch.FloatTensor(targets.float())
-            optimizer.zero_grad()
-            outputs=net(inputs)
-            loss=criterion(outputs,targets)
-            loss.backward()
-            optimizer.step()
-            running_loss+=loss.item() 
-        torch.optim.lr_scheduler.step()
-        print('epoch',epoch,'average loss', running_loss/len(trainloader))             
-            # if (len(trainloader)*epoch+i)%200==199:
-            #     running_loss=running_loss/(200*BATCH_SIZE)
-            #     print('[%d,%5d] loss: %.6f ' % (epoch+1,i+1,running_loss))
-            #     running_loss=0.0
-
-
-val_loading = MyDataset(X_val, y_val) # on charge données de validation
-
-test_loading = MyDataset(X_test, y_test) #on charge données de test
 
 def test(net,test_loader):
+    net.eval()
     total_loss = 0
-    for batch_idx,(test_loader.data_feature, test_loader.data_target) in enumerate(test_loader,0):
-        outputs = net(test_loader.data_feature)
-        loss = criterion(outputs,test_loader.data_target)
-        total_loss += loss.cpu().item()
-    print('average loss', total_loss/len(test_loader))
+    for idx,(data, target) in enumerate(test_loader,0):
+        outputs = net(data)
+        outputs = outputs * std_X_train + mean_X_train
+        target = target * std_y_train + mean_y_train
+        loss = criterion(outputs,target)
+        total_loss += sqrt(loss.cpu().item())
+    print('average testing loss', total_loss/len(test_loader))
     
         
 #on a définit nos fonctions de train et de test, 
 # on va maintenant les utiliser
     
-for epoch in range(50):
-    train(model,optimizer,train_loading)
-    test(Net,test_loading)    
+for epoch in range(50): 
+    train(model,train_loading,optimizer,epoch)
+    #test(model,val_loading)    
+   
+plt.figure()
+plt.plot(loss_list)    
     
